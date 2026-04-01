@@ -1,0 +1,14 @@
+{
+    "Name": "Visible Layers List",
+    "Version": "1.0.1",
+    "Id": "Calloatti.VisibleLayersList",
+    "MinimumGameVersion": "1.0.12.5",
+    "Description": "Visible Layers List",
+    "RequiredMods": [
+        {
+            "Id": "Harmony",
+            "MinVersion": "2.4.1"
+        }
+    ],
+    "OptionalMods": []
+}
