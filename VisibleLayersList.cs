@@ -9,6 +9,7 @@ using Timberborn.MapStateSystem;
 using Timberborn.Modding;
 using Timberborn.ModManagerScene;
 using Timberborn.SingletonSystem;
+using Timberborn.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -33,7 +34,7 @@ namespace Calloatti.VisibleLayersList
     }
   }
 
-  public class LayerDropdownManager : ILoadableSingleton, IInputProcessor
+  public class LayerDropdownManager : ILoadableSingleton, IInputProcessor, IDisposable
   {
     public static LayerDropdownManager Instance { get; private set; }
     public MapSize MapSize { get; }
@@ -41,6 +42,7 @@ namespace Calloatti.VisibleLayersList
     private readonly InputService _inputService;
     private readonly ILevelVisibilityService _levelVisibilityService;
     private readonly VisualElementLoader _visualElementLoader;
+    public readonly ILoc Loc;
 
     public ScrollView CustomDropdown { get; set; }
 
@@ -49,19 +51,34 @@ namespace Calloatti.VisibleLayersList
 
     private int _mouseOverCount = 0;
 
-    public LayerDropdownManager(MapSize mapSize, InputService inputService, ILevelVisibilityService levelVisibilityService, VisualElementLoader visualElementLoader)
+    public LayerDropdownManager(MapSize mapSize, InputService inputService, ILevelVisibilityService levelVisibilityService, VisualElementLoader visualElementLoader, ILoc loc)
     {
       Instance = this;
       MapSize = mapSize;
       _inputService = inputService;
       _levelVisibilityService = levelVisibilityService;
       _visualElementLoader = visualElementLoader;
+      Loc = loc;
     }
 
     public void Load()
     {
       CurrentLevel = _levelVisibilityService.MaxVisibleLevel;
       _levelVisibilityService.MaxVisibleLevelChanged += OnMaxVisibleLevelChanged;
+    }
+
+    public void Dispose()
+    {
+      if (_levelVisibilityService != null)
+      {
+        _levelVisibilityService.MaxVisibleLevelChanged -= OnMaxVisibleLevelChanged;
+      }
+      if (_inputService != null)
+      {
+        _inputService.RemoveInputProcessor(this);
+      }
+      CustomDropdown = null;
+      Instance = null;
     }
 
     private void OnMaxVisibleLevelChanged(object sender, int newLevel)
@@ -121,10 +138,8 @@ namespace Calloatti.VisibleLayersList
 
     public VisualElement CreateNativeDropdownItem(string text, Action onClick, bool isSelected)
     {
-      // Load the native prefab as seen in DropdownItemsSetter
       VisualElement item = _visualElementLoader.LoadVisualElement("Core/DropdownItem");
 
-      // Override native height (vanilla is 28px) [cite: 73]
       item.style.height = 22;
       item.style.paddingTop = 2;
       item.style.paddingBottom = 2;
@@ -133,11 +148,10 @@ namespace Calloatti.VisibleLayersList
       if (textLabel != null)
       {
         textLabel.text = text;
-        textLabel.style.fontSize = 12; // Condensed font size
+        textLabel.style.fontSize = 12;
         textLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
         textLabel.style.paddingLeft = 10;
 
-        // Override the selected row's native padding shift [cite: 76]
         if (isSelected)
         {
           textLabel.style.paddingRight = 0;
@@ -147,13 +161,11 @@ namespace Calloatti.VisibleLayersList
       Image icon = item.Q<Image>("Icon");
       if (icon != null) icon.style.display = DisplayStyle.None;
 
-      // ClickEvent triggers the native sound defined in USS 
       item.RegisterCallback<ClickEvent>(evt => onClick());
 
       if (isSelected)
       {
         item.AddToClassList("dropdown-item--selected");
-        // Override native selected alignment (vanilla is center) [cite: 75]
         item.style.justifyContent = Justify.FlexStart;
         item.style.backgroundColor = new StyleColor(new Color(0.25f, 0.40f, 0.25f, 0.8f));
       }
@@ -169,13 +181,17 @@ namespace Calloatti.VisibleLayersList
     {
       if (____root == null) return;
 
+      // Clean up previous dropdown if the panel reloaded instead of breaking early
+      var existing = ____root.Q<ScrollView>("CustomLayerDropdown");
+      if (existing != null) ____root.Remove(existing);
+
       ScrollView customDropdown = new ScrollView
       {
         name = "CustomLayerDropdown",
         style =
                 {
                     position = Position.Absolute,
-                    maxHeight = 600,
+                    maxHeight = 850, // INCREASED from 600 to prevent scrolling on tall maps
                     backgroundColor = new StyleColor(new Color(0.12f, 0.14f, 0.12f, 0.98f)),
                     borderTopWidth = 1,
                     borderBottomWidth = 1,
@@ -205,7 +221,6 @@ namespace Calloatti.VisibleLayersList
           return;
         }
 
-        // Align exactly to the bottom and right of the Content box
         VisualElement contentBox = ____root.Q<VisualElement>("Content");
         if (contentBox != null)
         {
@@ -220,7 +235,7 @@ namespace Calloatti.VisibleLayersList
         bool isReset = ____levelVisibilityService.LevelIsAtMax;
 
         customDropdown.Add(LayerDropdownManager.Instance.CreateNativeDropdownItem(
-            "Reset visible layers",
+            LayerDropdownManager.Instance.Loc.T("Calloatti.VisibleLayersList.ResetLayers"),
             () => {
               ____levelVisibilityService.ResetMaxVisibleLevel();
               LayerDropdownManager.Instance.HideDropdown();
@@ -230,7 +245,6 @@ namespace Calloatti.VisibleLayersList
 
         if (LayerDropdownManager.Instance == null || LayerDropdownManager.Instance.MapSize == null) return;
 
-        // Use direct field access enabled by publicizer
         int maxLayer = LayerDropdownManager.Instance.MapSize.TotalSize.z;
         if (____levelVisibilityService is LevelVisibilityService lvs && lvs._maxLevelHidingAnything > 0)
         {
@@ -243,7 +257,7 @@ namespace Calloatti.VisibleLayersList
           bool isSelected = (!isReset && currentLevel == layerToSet);
 
           customDropdown.Add(LayerDropdownManager.Instance.CreateNativeDropdownItem(
-              $"Layer {layerToSet}",
+              LayerDropdownManager.Instance.Loc.T("Calloatti.VisibleLayersList.Layer", layerToSet.ToString()),
               () => {
                 ____levelVisibilityService.SetMaxVisibleLevel(layerToSet);
                 LayerDropdownManager.Instance.HideDropdown();

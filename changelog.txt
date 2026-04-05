@@ -1,0 +1,6 @@
+1.0.2
+Localization updates.
+1.0.1
+Added sound, click away
+1.0.0
+Initial release
