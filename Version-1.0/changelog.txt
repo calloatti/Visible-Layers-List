@@ -1,6 +1,12 @@
-1.0.2
-Localization updates.
-1.0.1
-Added sound, click away
-1.0.0
-Initial release
+--------------------------------------------------------------------------------
+Game Version: 1.0.0.0
+Mod Version: 1.0.2
+- Localization updates.
+--------------------------------------------------------------------------------
+Game Version: 1.0.0.0
+Mod Version: 1.0.1
+- Added sound, click away
+--------------------------------------------------------------------------------
+Game Version: 1.0.0.0
+Mod Version: 1.0.0
+- Initial release
